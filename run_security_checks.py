@@ -30,7 +30,11 @@ import time
 load_dotenv()
 
 # === CONFIGURATION ===
-SCAN_DIR = "elsai-model"
+# Add this at the beginning of main
+if len(sys.argv) > 1:
+    SCAN_DIR = sys.argv[1]
+else:
+    SCAN_DIR = "elsai-model"  # fallback
 REPORT_FILE = "bandit_report.json"
 SENDER_EMAIL = "abhinivesh.s@optisolbusiness.com"
 

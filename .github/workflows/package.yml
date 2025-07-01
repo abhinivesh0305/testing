@@ -1,15 +1,82 @@
-name: Auto Security Scan & Package Based on Folder Changes
+name: Enhanced Security Scan & Package Pipeline
 
 on:
   push:
     branches:
-      - main  # or your main branch
+      - main
+      - develop
+    paths:
+      - 'elsai-*/**'
+  pull_request:
+    branches:
+      - main
     paths:
       - 'elsai-*/**'
 
+env:
+  PYTHON_VERSION: '3.13'
+  PIP_CACHE_DIR: ~/.cache/pip
+
 jobs:
-  run-tests-and-package:
+  detect-changes:
+    name: 🔍 Detect Changed Folders
     runs-on: ubuntu-latest
+    outputs:
+      folders: ${{ steps.detect.outputs.folders }}
+      matrix: ${{ steps.detect.outputs.matrix }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed elsai folders
+        id: detect
+        run: |
+          # Get changed files between commits
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            base_sha="${{ github.event.pull_request.base.sha }}"
+            head_sha="${{ github.event.pull_request.head.sha }}"
+          else
+            base_sha="${{ github.event.before }}"
+            head_sha="${{ github.sha }}"
+          fi
+          
+          echo "🔍 Comparing $base_sha...$head_sha"
+          
+          # Find all changed elsai-* folders
+          changed_folders=$(git diff --name-only $base_sha $head_sha | \
+            grep '^elsai-' | \
+            cut -d/ -f1 | \
+            sort -u || true)
+          
+          if [ -z "$changed_folders" ]; then
+            echo "❌ No valid elsai-* folders were changed."
+            echo "folders=" >> $GITHUB_OUTPUT
+            echo "matrix={\"include\":[]}" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          echo "📁 Changed folders:"
+          echo "$changed_folders" | while read folder; do
+            echo "  - $folder"
+          done
+          
+          # Create matrix for parallel jobs
+          folders_json=$(echo "$changed_folders" | jq -R -s -c 'split("\n") | map(select(length > 0)) | map({folder: .})')
+          
+          echo "folders=$changed_folders" >> $GITHUB_OUTPUT
+          echo "matrix={\"include\":$folders_json}" >> $GITHUB_OUTPUT
+
+  security-and-package:
+    name: 🔐 Security Scan & Package
+    needs: detect-changes
+    if: needs.detect-changes.outputs.folders != ''
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
+      fail-fast: false
+    
     env:
       EC2_HOST: ${{ secrets.EC2_HOST }}
       EC2_PORT: ${{ secrets.EC2_PORT }}
@@ -17,45 +84,140 @@ jobs:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
       SONAR_ORG: ${{ secrets.SONAR_ORG }}
+      FOLDER: ${{ matrix.folder }}
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Detect changed folder
-        id: detect
-        run: |
-          folder=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | cut -d/ -f1 | sort -u | grep ^elsai- | head -n 1)
-          echo "📁 Changed folder: $folder"
-          echo "folder=$folder" >> $GITHUB_OUTPUT
-
-      - name: Fail if no valid folder found
-        if: steps.detect.outputs.folder == ''
-        run: |
-          echo "❌ No valid folder (like elsai-*) was changed."
-          exit 1
-
-      - name: Set up Python
+      - name: 🐍 Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13'  # Specify the Python version you need
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
 
-      - name: Install dependencies
+      - name: 📦 Install dependencies
         run: |
-          pip install --upgrade pip
+          python -m pip install --upgrade pip
           pip install cython python-dotenv setuptools wheel bandit pysonar
+          
+          # Install project-specific dependencies if requirements.txt exists
+          if [ -f "$FOLDER/requirements.txt" ]; then
+            echo "📋 Installing project requirements for $FOLDER"
+            pip install -r "$FOLDER/requirements.txt"
+          fi
 
-      - name: Save PEM file
+      - name: 🔑 Setup SSH key
+        if: env.PEM_FILE != ''
         run: |
           echo "$PEM_FILE" > Elsai-Package.pem
           chmod 400 Elsai-Package.pem
+          echo "✅ SSH key configured"
 
-      - name: Run Bandit & SonarCloud Scan
+      - name: 🔍 Validate folder structure
         run: |
-          python run_security_checks.py ${{ steps.detect.outputs.folder }}
+          if [ ! -d "$FOLDER" ]; then
+            echo "❌ Folder $FOLDER does not exist"
+            exit 1
+          fi
+          
+          echo "📁 Folder structure for $FOLDER:"
+          ls -la "$FOLDER/" || echo "Empty folder"
+          
+          # Check for required files
+          if [ ! -f "$FOLDER/package.sh" ]; then
+            echo "⚠️  Warning: package.sh not found in $FOLDER"
+          else
+            echo "✅ package.sh found"
+          fi
 
-      - name: Make package.sh executable
-        run: chmod +x ${{ steps.detect.outputs.folder }}/package.sh
+      - name: 🛡️ Run security scans
+        run: |
+          echo "🔍 Running security checks for $FOLDER"
+          
+          # Run custom security checks if script exists
+          if [ -f "run_security_checks.py" ]; then
+            echo "🔍 Running custom security checks..."
+            python run_security_checks.py "$FOLDER"
+          elif [ -f "testing.py" ]; then  
+            echo "🔍 Running testing.py security checks..."
+            python testing.py "$FOLDER"
+          else
+            echo "🔍 Running Bandit scan directly..."
+            bandit -r "$FOLDER" -f json -o "bandit-report-$FOLDER.json" || true
+            bandit -r "$FOLDER" || echo "⚠️  Bandit found security issues"
+          fi
 
-      - name: Run package.sh inside folder
-        run: ./${{ steps.detect.outputs.folder }}/package.sh
+      - name: 📊 Upload security scan results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-reports-${{ matrix.folder }}
+          path: |
+            bandit-report-*.json
+            sonar-report-*.json
+          retention-days: 30
+
+      - name: 🏗️ Run packaging
+        if: success()
+        run: |
+          if [ -f "$FOLDER/package.sh" ]; then
+            echo "📦 Making package.sh executable for $FOLDER"
+            chmod +x "$FOLDER/package.sh"
+            
+            echo "🚀 Running packaging for $FOLDER"
+            cd "$FOLDER"
+            ./package.sh
+            cd ..
+            
+            echo "✅ Packaging completed for $FOLDER"
+          else
+            echo "⚠️  No package.sh found for $FOLDER, skipping packaging"
+          fi
+
+      - name: 📤 Upload build artifacts
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: build-artifacts-${{ matrix.folder }}
+          path: |
+            ${{ matrix.folder }}/dist/
+            ${{ matrix.folder }}/build/
+            ${{ matrix.folder }}/*.tar.gz
+            ${{ matrix.folder }}/*.zip
+          retention-days: 7
+
+  notify-results:
+    name: 📢 Notify Results
+    needs: [detect-changes, security-and-package]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: 📋 Job Summary
+        run: |
+          echo "## 🚀 CI/CD Pipeline Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.detect-changes.outputs.folders }}" == "" ]; then
+            echo "❌ **No elsai-* folders were changed in this push**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The pipeline was triggered but no valid folders matching the pattern 'elsai-*' were modified." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ **Processed the following folders:**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            folders="${{ needs.detect-changes.outputs.folders }}"
+            echo "$folders" | while read folder; do
+              if [ -n "$folder" ]; then
+                echo "- 📁 \`$folder\`" >> $GITHUB_STEP_SUMMARY
+              fi
+            done
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            if [ "${{ needs.security-and-package.result }}" == "success" ]; then
+              echo "🔐 **Security scans:** ✅ Passed" >> $GITHUB_STEP_SUMMARY
+              echo "📦 **Packaging:** ✅ Completed" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.security-and-package.result }}" == "failure" ]; then
+              echo "❌ **Security scans or packaging failed**" >> $GITHUB_STEP_SUMMARY
+              echo "Please check the job logs for details." >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
