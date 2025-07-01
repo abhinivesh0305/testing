@@ -5,7 +5,7 @@ on:
     branches:
       - main  # or your main branch
     paths:
-      - '*/**'  # Detects changes inside any top-level folder like elsai_model/**
+      - 'elsai_*/**'
 
 jobs:
   run-tests-and-package:
