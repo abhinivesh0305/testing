@@ -1,0 +1,38 @@
+name: Run Package Script for elsai_vectordb
+
+on:
+  push:
+    branches:
+      - package-vectordb
+    paths:
+      - 'elsai_vectordb/**'
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+    env:
+      EC2_HOST: ${{ secrets.EC2_HOST }}
+      EC2_PORT: ${{ secrets.EC2_PORT }}
+      PEM_FILE: ${{ secrets.PEM_FILE }}  
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'  # Latest pre-release as of now
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install cython python-dotenv setuptools wheel
+
+      - name: Save PEM file from secret
+        run: |
+          echo "$PEM_FILE" > Elsai-Package.pem
+          chmod 400 Elsai-Package.pem
+      - name: Make script executable
+        run: chmod +x ./package_elsai_vectordb.sh
+
+      - name: Run package script
+        run: ./package_elsai_vectordb.sh

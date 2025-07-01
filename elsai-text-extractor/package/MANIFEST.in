@@ -1,0 +1,12 @@
+# Include README and LICENSE
+include README.md
+include LICENSE
+
+# Include all Python files
+recursive-include elsai_text_extractors *.py
+
+# CRITICAL: Include compiled extensions
+include elsai_text_extractors/**/*.so
+include elsai_text_extractors/**/*.pyd
+include elsai_text_extractors/**/*.dll
+recursive-include elsai_text_extractors *.so *.pyd *.dll

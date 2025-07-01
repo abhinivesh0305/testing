@@ -1,0 +1,25 @@
+[project]
+name = "elsai-text-extractors"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "abhinivesh0305",email = "abhinivesh.s@optisolbusiness.com"}
+]
+requires-python = ">=3.9,<3.14"
+dependencies = [
+    "unstructured (>=0.17.2,<0.18.0)",
+    "networkx (==3.1)",
+    "langchain-community (>=0.3.24,<0.4.0)",
+    "pandas (>=2.2.3,<3.0.0)",
+    "openpyxl (>=3.1.5,<4.0.0)",
+    "docx2txt (>=0.9,<0.10)"
+
+
+
+
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

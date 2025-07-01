@@ -1,0 +1,12 @@
+# Include README and LICENSE
+include README.md
+include LICENSE
+
+# Include all Python files
+recursive-include elsai_vectordb *.py
+
+# CRITICAL: Include compiled extensions
+include elsai_vectordb/**/*.so
+include elsai_vectordb/**/*.pyd
+include elsai_vectordb/**/*.dll
+recursive-include elsai_vectordb *.so *.pyd *.dll

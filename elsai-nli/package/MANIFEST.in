@@ -1,0 +1,12 @@
+# Include README and LICENSE
+include README.md
+include LICENSE
+
+# Include all Python files
+recursive-include elsai_nli *.py
+
+# CRITICAL: Include compiled extensions
+include elsai_nli/**/*.so
+include elsai_nli/**/*.pyd
+include elsai_nli/**/*.dll
+recursive-include elsai_nli *.so *.pyd *.dll

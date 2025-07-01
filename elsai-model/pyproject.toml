@@ -1,0 +1,22 @@
+[project]
+name = "elsai-core"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "abhinivesh0305",email = "abhinivesh.s@optisolbusiness.com"}
+]
+requires-python = ">=3.9,<3.14"
+dependencies = [
+    "langchain-openai (>=0.3.18,<0.4.0)",
+    "langchain-aws (>=0.2.24,<0.3.0)",
+    "python-dotenv (>=1.1.0,<2.0.0)"
+]
+[tool.poetry]
+packages = [
+  { include = "elsai_model" }
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
