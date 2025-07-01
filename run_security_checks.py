@@ -93,7 +93,6 @@ def run_sonarcloud_scan(scan_dir="elsai_model"):
             "--sonar-project-key", sonar_project_key,
             "--sonar-organization", sonar_org,
             "--sonar-sources", scan_dir,
-            "--define sonar.python.coverage.reportPaths", coverage_path,
             "--sonar-host-url", "https://sonarcloud.io"
         ], capture_output=True, text=True)
 
