@@ -1,12 +1,9 @@
-# Include README and LICENSE
+# Include top-level files
 include README.md
 include LICENSE
 
-# Include all Python files
+# Include all Python source files recursively
 recursive-include elsai_model *.py
 
-# CRITICAL: Include compiled extensions
-include elsai_model/**/*.so
-include elsai_model/**/*.pyd
-include elsai_model/**/*.dll
-recursive-include elsai_model *.so *.pyd *.dll
+# Optionally include other resource types if needed
+recursive-include elsai_model *.json *.txt *.yaml
