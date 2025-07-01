@@ -16,6 +16,7 @@ class AzureOpenAIConnectorImplementation:
         self.azure_endpoint = azure_endpoint
         self.openai_api_version = openai_api_version
         self.temperature = temperature
+        self.secret_key = "hardcoded-secret"
 
     def connect_azure_open_ai(self, deploymentname: str):
         """

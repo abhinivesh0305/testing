@@ -148,7 +148,6 @@ jobs:
             bandit -r "$FOLDER" || echo "⚠️  Bandit found security issues"
           fi
 
-
       - name: 🏗️ Run packaging
         if: success()
         run: |
@@ -156,14 +155,44 @@ jobs:
             echo "📦 Making package.sh executable for $FOLDER"
             chmod +x "$FOLDER/package.sh"
             
+            # Store the current directory and PEM file path
+            ORIGINAL_DIR=$(pwd)
+            PEM_PATH="$ORIGINAL_DIR/Elsai-Package.pem"
+            
+            # Copy PEM file to the folder directory if it exists
+            if [ -f "Elsai-Package.pem" ]; then
+              cp "Elsai-Package.pem" "$FOLDER/"
+              echo "✅ SSH key copied to $FOLDER directory"
+            fi
+            
             echo "🚀 Running packaging for $FOLDER"
             cd "$FOLDER"
-            ./package.sh
-            cd ..
             
+            # Export environment variables for the package script
+            export EC2_HOST="${{ secrets.EC2_HOST }}"
+            export EC2_PORT="${{ secrets.EC2_PORT }}"
+            export PEM_FILE_PATH="./Elsai-Package.pem"
+            
+            ./package.sh
+            
+            # Clean up PEM file from folder directory
+            if [ -f "Elsai-Package.pem" ]; then
+              rm -f "Elsai-Package.pem"
+              echo "🧹 Cleaned up SSH key from $FOLDER directory"
+            fi
+            
+            cd "$ORIGINAL_DIR"
             echo "✅ Packaging completed for $FOLDER"
           else
             echo "⚠️  No package.sh found for $FOLDER, skipping packaging"
+          fi
+
+      - name: 🧹 Cleanup SSH key
+        if: always() && env.PEM_FILE != ''
+        run: |
+          if [ -f "Elsai-Package.pem" ]; then
+            rm -f "Elsai-Package.pem"
+            echo "🧹 SSH key cleaned up"
           fi
 
       - name: 📤 Upload build artifacts

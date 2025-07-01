@@ -1,17 +1,17 @@
 {
   "errors": [],
-  "generated_at": "2025-07-01T10:05:08Z",
+  "generated_at": "2025-07-01T11:04:36Z",
   "metrics": {
     "_totals": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.MEDIUM": 1,
       "CONFIDENCE.UNDEFINED": 0,
       "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
+      "SEVERITY.LOW": 1,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 318,
+      "loc": 252,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -57,13 +57,13 @@
     "elsai-model/elsai_model/azure_openai/implementation.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.MEDIUM": 1,
       "CONFIDENCE.UNDEFINED": 0,
       "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
+      "SEVERITY.LOW": 1,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 45,
+      "loc": 46,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -180,10 +180,31 @@
       "SEVERITY.LOW": 0,
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
-      "loc": 105,
+      "loc": 38,
       "nosec": 0,
       "skipped_tests": 0
     }
   },
-  "results": []
+  "results": [
+    {
+      "code": "18         self.temperature = temperature\n19         self.secret_key = \"hardcoded-secret\"\n20 \n",
+      "col_offset": 26,
+      "end_col_offset": 44,
+      "filename": "elsai-model/elsai_model/azure_openai/implementation.py",
+      "issue_confidence": "MEDIUM",
+      "issue_cwe": {
+        "id": 259,
+        "link": "https://cwe.mitre.org/data/definitions/259.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Possible hardcoded password: 'hardcoded-secret'",
+      "line_number": 19,
+      "line_range": [
+        19
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.8.5/plugins/b105_hardcoded_password_string.html",
+      "test_id": "B105",
+      "test_name": "hardcoded_password_string"
+    }
+  ]
 }
