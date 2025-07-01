@@ -86,12 +86,14 @@ def run_sonarcloud_scan(scan_dir="elsai_model"):
 
     try:
         # Use the correct pysonar parameters
+        coverage_path = os.path.join(scan_dir, "coverage.xml")
         result = subprocess.run([
             "pysonar",
             "--token", sonar_token,
             "--sonar-project-key", sonar_project_key,
             "--sonar-organization", sonar_org,
             "--sonar-sources", scan_dir,
+            "--sonar-python-coverage-reportPaths", coverage_path,
             "--sonar-host-url", "https://sonarcloud.io"
         ], capture_output=True, text=True)
 
