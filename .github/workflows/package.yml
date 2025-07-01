@@ -5,7 +5,7 @@ on:
     branches:
       - main  # or your main branch
     paths:
-      - 'elsai_*/**'
+      - 'elsai-*/**'
 
 jobs:
   run-tests-and-package:
