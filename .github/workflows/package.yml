@@ -132,6 +132,10 @@ jobs:
           fi
 
       - name: 🛡️ Run security scans
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          TENANT_ID: ${{ secrets.TENANT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
         run: |
           echo "🔍 Running security checks for $FOLDER"
           
