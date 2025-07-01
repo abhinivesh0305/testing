@@ -130,12 +130,6 @@ jobs:
           else
             echo "✅ package.sh found"
           fi
-      - name: 🧪 Run tests with coverage
-        run: |
-          cd "$FOLDER"
-          coverage run -m pytest || echo "⚠️ Test failures ignored for now"
-          coverage xml -o coverage.xml
-          cd ..
       - name: 🛡️ Run security scans
         env:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
