@@ -1,0 +1,61 @@
+name: Auto Security Scan & Package Based on Folder Changes
+
+on:
+  push:
+    branches:
+      - main  # or your main branch
+    paths:
+      - '*/**'  # Detects changes inside any top-level folder like elsai_model/**
+
+jobs:
+  run-tests-and-package:
+    runs-on: ubuntu-latest
+    env:
+      EC2_HOST: ${{ secrets.EC2_HOST }}
+      EC2_PORT: ${{ secrets.EC2_PORT }}
+      PEM_FILE: ${{ secrets.PEM_FILE }}
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
+      SONAR_ORG: ${{ secrets.SONAR_ORG }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Detect changed folder
+        id: detect
+        run: |
+          folder=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | cut -d/ -f1 | sort -u | grep ^elsai_ | head -n 1)
+          echo "📁 Changed folder: $folder"
+          echo "folder=$folder" >> $GITHUB_OUTPUT
+
+      - name: Fail if no valid folder found
+        if: steps.detect.outputs.folder == ''
+        run: |
+          echo "❌ No valid folder (like elsai_*) was changed."
+          exit 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'  # Specify the Python version you need
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install cython python-dotenv setuptools wheel bandit pysonar
+
+      - name: Save PEM file
+        run: |
+          echo "$PEM_FILE" > Elsai-Package.pem
+          chmod 400 Elsai-Package.pem
+
+      - name: Run Bandit & SonarCloud Scan
+        run: |
+          python run_security_checks.py ${{ steps.detect.outputs.folder }}
+
+      - name: Make package.sh executable
+        run: chmod +x ${{ steps.detect.outputs.folder }}/package.sh
+
+      - name: Run package.sh inside folder
+        run: ./${{ steps.detect.outputs.folder }}/package.sh
