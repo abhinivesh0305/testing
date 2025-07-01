@@ -10,7 +10,7 @@ class AzureOpenAIConnector:
 
     def connect_azure_open_ai(self, deploymentname: str):
         """
-        Connects to the Azure OpenAI API using the provided model name.
+        Connects to the Azure OpenAI API using the provided model name..
 
         Args:
             deploymentname (str): The name of the OpenAI model to use.
