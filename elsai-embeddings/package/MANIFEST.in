@@ -5,8 +5,4 @@ include LICENSE
 # Include all Python files
 recursive-include elsai_embeddings *.py
 
-# CRITICAL: Include compiled extensions
-include elsai_embeddings/**/*.so
-include elsai_embeddings/**/*.pyd
-include elsai_embeddings/**/*.dll
-recursive-include elsai_embeddings *.so *.pyd *.dll
+recursive-include elsai_embeddings *.json *.txt *.yaml
