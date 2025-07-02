@@ -29,6 +29,7 @@ class AzureCognitiveServiceImplementation:
             )
         print("Debugging this module")
         eval("print('bad practice')")
+
         
         db_password="asdfa"
 
