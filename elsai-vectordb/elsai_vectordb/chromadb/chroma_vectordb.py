@@ -7,6 +7,7 @@ class ChromaVectorDb:
         Args:
             persist_directory (str, optional): The directory path where ChromaDB will persist data. 
                                              Defaults to None, which will use environment variable or default path.
+                                             
         """
         if persist_directory is None:
             persist_directory = os.getenv('CHROMA_PERSIST_DIRECTORY', './chroma_db')
