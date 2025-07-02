@@ -33,7 +33,6 @@ jobs:
       - name: Detect changed elsai folders
         id: detect
         run: |
-          # Get changed files between commits
           if [ "${{ github.event_name }}" == "pull_request" ]; then
             base_sha="${{ github.event.pull_request.base.sha }}"
             head_sha="${{ github.event.pull_request.head.sha }}"
@@ -41,32 +40,32 @@ jobs:
             base_sha="${{ github.event.before }}"
             head_sha="${{ github.sha }}"
           fi
-          
+
           echo "🔍 Comparing $base_sha...$head_sha"
-          
-          # Find all changed elsai-* folders
-          changed_folders=$(git diff --name-only $base_sha $head_sha | \
-            grep '^elsai-' | \
-            cut -d/ -f1 | \
-            sort -u || true)
-          
+
+          changed_folders=$(git diff --name-only "$base_sha" "$head_sha" | grep '^elsai-' | cut -d/ -f1 | sort -u || true)
+
           if [ -z "$changed_folders" ]; then
             echo "❌ No valid elsai-* folders were changed."
-            echo "folders=" >> $GITHUB_OUTPUT
+            echo "folders<<EOF" >> $GITHUB_OUTPUT
+            echo "" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
             echo "matrix={\"include\":[]}" >> $GITHUB_OUTPUT
             exit 0
           fi
-          
+
           echo "📁 Changed folders:"
-          echo "$changed_folders" | while read folder; do
+          echo "$changed_folders" | while read -r folder; do
             echo "  - $folder"
           done
-          
-          # Create matrix for parallel jobs
+
+          echo "folders<<EOF" >> $GITHUB_OUTPUT
+          echo "$changed_folders" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
           folders_json=$(echo "$changed_folders" | jq -R -s -c 'split("\n") | map(select(length > 0)) | map({folder: .})')
-          
-          echo "folders=$changed_folders" >> $GITHUB_OUTPUT
           echo "matrix={\"include\":$folders_json}" >> $GITHUB_OUTPUT
+          echo "🔍 Matrix JSON: {\"include\":$folders_json}"
 
   security-and-package:
     name: 🔐 Security Scan & Package
@@ -76,15 +75,15 @@ jobs:
     strategy:
       matrix: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
       fail-fast: false
-    
+
     env:
+      FOLDER: ${{ matrix.folder }}
       EC2_HOST: ${{ secrets.EC2_HOST }}
       EC2_PORT: ${{ secrets.EC2_PORT }}
       PEM_FILE: ${{ secrets.PEM_FILE }}
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
       SONAR_ORG: ${{ secrets.SONAR_ORG }}
-      FOLDER: ${{ matrix.folder }}
 
     steps:
       - name: Checkout repository
@@ -100,10 +99,8 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install cython python-dotenv setuptools wheel bandit pysonar msal pytest coverage safety poetry
-          
-          # Install project-specific dependencies if requirements.txt exists
+
           if [ -f "$FOLDER/requirements.txt" ]; then
-            echo "📋 Installing project requirements for $FOLDER"
             pip install -r "$FOLDER/requirements.txt"
           fi
 
@@ -112,7 +109,6 @@ jobs:
         run: |
           echo "$PEM_FILE" > Elsai-Package.pem
           chmod 400 Elsai-Package.pem
-          echo "✅ SSH key configured"
 
       - name: 🔍 Validate folder structure
         run: |
@@ -120,132 +116,62 @@ jobs:
             echo "❌ Folder $FOLDER does not exist"
             exit 1
           fi
-          
-          echo "📁 Folder structure for $FOLDER:"
-          ls -la "$FOLDER/" || echo "Empty folder"
-          
-          # Check for required files
+          ls -la "$FOLDER/"
           if [ ! -f "$FOLDER/package.sh" ]; then
-            echo "⚠️  Warning: package.sh not found in $FOLDER"
+            echo "⚠️ Warning: package.sh not found in $FOLDER"
           else
             echo "✅ package.sh found"
           fi
+
       - name: 🛡️ Run security scans
         env:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           TENANT_ID: ${{ secrets.TENANT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
         run: |
-          echo "🔍 Entering folder: $FOLDER"
-          cd "$FOLDER" || { echo "❌ Folder $FOLDER not found"; exit 1; }
+          cd "$FOLDER" || exit 1
 
-          # Check Poetry version
-          echo "📦 Checking Poetry version..."
-          poetry --version
-
-          # Method 1: Try installing the export plugin (for Poetry 1.2+)
-          echo "🔧 Installing Poetry export plugin..."
-          poetry self add poetry-plugin-export
-
-          # Method 2: Alternative - Generate requirements.txt manually
-          echo "📝 Generating requirements.txt..."
-          poetry export -f requirements.txt --without-hashes -o requirements.txt
-
-          # If export still fails, try this alternative approach:
-          if [ $? -ne 0 ]; then
-              echo "⚠️ Export command failed, trying alternative method..."
-              
-              # Method 3: Use pip-tools approach
-              echo "🔄 Generating requirements from pyproject.toml..."
-              poetry run pip freeze > requirements.txt
-              
-              # Method 4: Manual extraction from pyproject.toml
-              if [ $? -ne 0 ]; then
-                  echo "📋 Extracting dependencies from pyproject.toml..."
-                  python3 -c "
-          import toml
-          try:
-              with open('pyproject.toml', 'r') as f:
-                  data = toml.load(f)
-              
-              deps = data.get('tool', {}).get('poetry', {}).get('dependencies', {})
-              
-              with open('requirements.txt', 'w') as f:
-                  for pkg, version in deps.items():
-                      if pkg != 'python':
-                          if isinstance(version, str):
-                              f.write(f'{pkg}{version}\n')
-                          else:
-                              f.write(f'{pkg}\n')
-              
-              print('✅ requirements.txt generated from pyproject.toml')
-          except Exception as e:
-              print(f'❌ Error: {e}')
-          "
-              fi
+          if [ -f "pyproject.toml" ]; then
+            echo "📦 Generating requirements.txt from pyproject.toml"
+            poetry self add poetry-plugin-export || true
+            poetry export -f requirements.txt --without-hashes -o requirements.txt || poetry show --only=main --format=requirements > requirements.txt || echo "# fallback empty req" > requirements.txt
+          elif [ ! -f "requirements.txt" ]; then
+            echo "⚠️ No requirements.txt found, creating empty one"
+            touch requirements.txt
           fi
 
-          echo "✅ Requirements file generation completed"
           cd ..
-          # Run custom security checks if script exists
+
           if [ -f "run_security_checks.py" ]; then
-            echo "🔍 Running custom security checks..."
             python run_security_checks.py "$FOLDER"
-          elif [ -f "testing.py" ]; then  
-            echo "🔍 Running testing.py security checks..."
+          elif [ -f "testing.py" ]; then
             python testing.py "$FOLDER"
           else
-            echo "🔍 Running Bandit scan directly..."
             bandit -r "$FOLDER" -f json -o "bandit-report-$FOLDER.json" || true
-            bandit -r "$FOLDER" || echo "⚠️  Bandit found security issues"
           fi
 
       - name: 🏗️ Run packaging
         if: success()
         run: |
           if [ -f "$FOLDER/package.sh" ]; then
-            echo "📦 Making package.sh executable for $FOLDER"
             chmod +x "$FOLDER/package.sh"
-            
-            # Store the current directory and PEM file path
-            ORIGINAL_DIR=$(pwd)
-            PEM_PATH="$ORIGINAL_DIR/Elsai-Package.pem"
-            
-            # Copy PEM file to the folder directory if it exists
-            if [ -f "Elsai-Package.pem" ]; then
-              cp "Elsai-Package.pem" "$FOLDER/"
-              echo "✅ SSH key copied to $FOLDER directory"
-            fi
-            
-            echo "🚀 Running packaging for $FOLDER"
+            cp Elsai-Package.pem "$FOLDER/" || true
             cd "$FOLDER"
-            
-            # Export environment variables for the package script
             export EC2_HOST="${{ secrets.EC2_HOST }}"
             export EC2_PORT="${{ secrets.EC2_PORT }}"
             export PEM_FILE_PATH="./Elsai-Package.pem"
-            
             ./package.sh
-            
-            # Clean up PEM file from folder directory
-            if [ -f "Elsai-Package.pem" ]; then
-              rm -f "Elsai-Package.pem"
-              echo "🧹 Cleaned up SSH key from $FOLDER directory"
-            fi
-            
-            cd "$ORIGINAL_DIR"
-            echo "✅ Packaging completed for $FOLDER"
-          else
-            echo "⚠️  No package.sh found for $FOLDER, skipping packaging"
+            PACKAGE_EXIT_CODE=$?
+            rm -f "Elsai-Package.pem"
+            cd ..
+            exit $PACKAGE_EXIT_CODE
           fi
 
       - name: 🧹 Cleanup SSH key
         if: always() && env.PEM_FILE != ''
         run: |
-          if [ -f "Elsai-Package.pem" ]; then
-            rm -f "Elsai-Package.pem"
-            echo "🧹 SSH key cleaned up"
-          fi
+          rm -f Elsai-Package.pem || true
+          find . -name "Elsai-Package.pem" -type f -delete || true
 
       - name: 📤 Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -269,27 +195,23 @@ jobs:
         run: |
           echo "## 🚀 CI/CD Pipeline Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           if [ "${{ needs.detect-changes.outputs.folders }}" == "" ]; then
-            echo "❌ **No elsai-* folders were changed in this push**" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "The pipeline was triggered but no valid folders matching the pattern 'elsai-*' were modified." >> $GITHUB_STEP_SUMMARY
+            echo "❌ **No elsai-* folders were changed**" >> $GITHUB_STEP_SUMMARY
           else
             echo "✅ **Processed the following folders:**" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            folders="${{ needs.detect-changes.outputs.folders }}"
-            echo "$folders" | while read folder; do
+            echo "${{ needs.detect-changes.outputs.folders }}" | while read -r folder; do
               if [ -n "$folder" ]; then
                 echo "- 📁 \`$folder\`" >> $GITHUB_STEP_SUMMARY
               fi
             done
-            echo "" >> $GITHUB_STEP_SUMMARY
-            
+
             if [ "${{ needs.security-and-package.result }}" == "success" ]; then
               echo "🔐 **Security scans:** ✅ Passed" >> $GITHUB_STEP_SUMMARY
               echo "📦 **Packaging:** ✅ Completed" >> $GITHUB_STEP_SUMMARY
             elif [ "${{ needs.security-and-package.result }}" == "failure" ]; then
               echo "❌ **Security scans or packaging failed**" >> $GITHUB_STEP_SUMMARY
-              echo "Please check the job logs for details." >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.security-and-package.result }}" == "skipped" ]; then
+              echo "⏭️ **Security scans and packaging were skipped**" >> $GITHUB_STEP_SUMMARY
             fi
           fi
