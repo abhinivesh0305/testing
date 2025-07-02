@@ -70,6 +70,10 @@ def run_bandit():
 # === Run Safety ===
 
 
+import subprocess
+import os
+import json
+
 def run_safety(scan_dir):
     print("🔐 Running Safety scan...")
     req_file = os.path.join(scan_dir, "requirements.txt")
@@ -80,33 +84,33 @@ def run_safety(scan_dir):
 
     try:
         result = subprocess.run(
-            ["safety", "check", "-r", req_file, "--json"],
+            ["safety", "scan", "--json", "-r", req_file],
             capture_output=True,
             text=True
         )
-        
-        # Save raw output
+
+        # Save output to file
         with open("safety-report.json", "w") as f:
             f.write(result.stdout)
 
-        # Try to load the JSON only if output is not empty and looks like JSON
-        if result.stdout.strip().startswith("{"):
+        try:
             safety_data = json.loads(result.stdout)
-            if result.returncode != 0:
-                print("❗ Safety found vulnerabilities.")
-            else:
-                print("✅ Safety scan passed.")
-            return safety_data
-        else:
-            print("⚠️ Safety output was not valid JSON:\n", result.stdout)
+        except json.JSONDecodeError:
+            print("❌ Output was not valid JSON.")
+            print(result.stdout)
             return None
 
-    except json.JSONDecodeError as e:
-        print(f"❌ JSON parsing error: {e}")
-        return None
+        if result.returncode == 0:
+            print("✅ Safety scan passed.")
+        else:
+            print("❗ Safety found vulnerabilities.")
+
+        return safety_data
+
     except Exception as e:
         print(f"❌ Failed to run Safety: {e}")
         return None
+
 
 
 
@@ -250,6 +254,8 @@ if __name__ == "__main__":
     # Parse results
     bandit_issues = parse_bandit_issues()
     has_safety_issues = safety_results is not None and len(safety_results) > 0
+
+    print(safety_results)
     print(f"🔍 Bandit found {len(bandit_issues)} issues.")
 
     
