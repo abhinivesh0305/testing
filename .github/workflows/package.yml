@@ -196,8 +196,8 @@ jobs:
             python testing.py "$FOLDER"
           else
             echo "🔍 Running Bandit scan directly..."
-            bandit -r "$FOLDER" -f json -o "bandit-report-$FOLDER.json" || true
-            bandit -r "$FOLDER" || echo "⚠️  Bandit found security issues"
+            bandit -r . -f json -o "bandit-report-$FOLDER.json" || true
+            bandit -r . || echo "⚠️  Bandit found security issues"
           fi
 
       - name: 🏗️ Run packaging
