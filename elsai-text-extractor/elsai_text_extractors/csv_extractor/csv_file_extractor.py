@@ -11,7 +11,6 @@ class CSVFileExtractor:
 
         Returns:
             list: Extracted data from the CSV file.
-
         Raises:
             Exception: If the CSV file cannot be loaded.
         """
