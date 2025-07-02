@@ -57,9 +57,8 @@ cd package
 echo "⚙️ Building Cython extensions..."
 python setup.py build_ext --inplace
 
-# Step 3: Remove implementation.py files (preserve __init__.py)
-echo "🧹 Removing source implementation.py files for obfuscation..."
-find ${FOLDER_NAME} -type f -name "implementation.py" -delete
+
+
 
 # Step 4: Package the project into sdist and wheel
 echo "📦 Creating source and wheel distributions..."
