@@ -139,8 +139,53 @@ jobs:
           echo "🔍 Entering folder: $FOLDER"
           cd "$FOLDER" || { echo "❌ Folder $FOLDER not found"; exit 1; }
 
-          # Export requirements for Safety
+          # Check Poetry version
+          echo "📦 Checking Poetry version..."
+          poetry --version
+
+          # Method 1: Try installing the export plugin (for Poetry 1.2+)
+          echo "🔧 Installing Poetry export plugin..."
+          poetry self add poetry-plugin-export
+
+          # Method 2: Alternative - Generate requirements.txt manually
+          echo "📝 Generating requirements.txt..."
           poetry export -f requirements.txt --without-hashes -o requirements.txt
+
+          # If export still fails, try this alternative approach:
+          if [ $? -ne 0 ]; then
+              echo "⚠️ Export command failed, trying alternative method..."
+              
+              # Method 3: Use pip-tools approach
+              echo "🔄 Generating requirements from pyproject.toml..."
+              poetry run pip freeze > requirements.txt
+              
+              # Method 4: Manual extraction from pyproject.toml
+              if [ $? -ne 0 ]; then
+                  echo "📋 Extracting dependencies from pyproject.toml..."
+                  python3 -c "
+          import toml
+          try:
+              with open('pyproject.toml', 'r') as f:
+                  data = toml.load(f)
+              
+              deps = data.get('tool', {}).get('poetry', {}).get('dependencies', {})
+              
+              with open('requirements.txt', 'w') as f:
+                  for pkg, version in deps.items():
+                      if pkg != 'python':
+                          if isinstance(version, str):
+                              f.write(f'{pkg}{version}\n')
+                          else:
+                              f.write(f'{pkg}\n')
+              
+              print('✅ requirements.txt generated from pyproject.toml')
+          except Exception as e:
+              print(f'❌ Error: {e}')
+          "
+              fi
+          fi
+
+          echo "✅ Requirements file generation completed"
           
           # Run custom security checks if script exists
           if [ -f "run_security_checks.py" ]; then
