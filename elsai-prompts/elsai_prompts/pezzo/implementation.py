@@ -23,7 +23,7 @@ class PezzoPromptRendererImplementation:
 
     def get_prompt(self, prompt_name: str) -> str:
         """
-        Get a prompt from Pezzo using the prompt name..
+        Get a prompt from Pezzo using the prompt name.
         """
         url = f"{self.server_url}/api/prompts/v2/deployment"
         params = {
