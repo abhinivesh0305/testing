@@ -66,6 +66,38 @@ def run_bandit():
     
     return result.returncode == 0
 
+# === Run Safety ===
+def run_safety(scan_dir):
+    print("🔐 Running Safety scan...")
+    req_file = os.path.join(scan_dir, "requirements.txt")
+    
+    if not os.path.exists(req_file):
+        print(f"⚠️ No requirements.txt found in {scan_dir}. Skipping Safety scan.")
+        return None
+
+    try:
+        result = subprocess.run(
+            ["safety", "check", "-r", req_file, "--json"],
+            capture_output=True,
+            text=True
+        )
+        if result.returncode != 0:
+            print("❗ Safety found vulnerabilities.")
+        else:
+            print("✅ Safety scan passed.")
+        
+        # Save report
+        with open("safety-report.json", "w") as f:
+            f.write(result.stdout)
+
+        return json.loads(result.stdout)
+
+    except Exception as e:
+        print(f"❌ Failed to run Safety: {str(e)}")
+        return None
+
+
+
 # === Run SonarCloud Scan ===
 def run_sonarcloud_scan(scan_dir="elsai_model"):
     print(f"🚀 Running SonarCloud scan on '{scan_dir}' using pysonar...")
@@ -177,7 +209,7 @@ def parse_bandit_issues():
         return []
 
 # === Format Email Body ===
-def format_email_body(bandit_issues, sonar_failed, sonar_error):
+def format_email_body(bandit_issues, sonar_failed, sonar_error, has_safety_issues):
     body = "⚠️ Build failed due to security/quality issues found during scanning.\n\n"
     
     if bandit_issues:
@@ -189,6 +221,10 @@ def format_email_body(bandit_issues, sonar_failed, sonar_error):
         body += f"{sonar_error}\n\n"
         body += f"View detailed results at: https://sonarcloud.io/project/overview?id={os.getenv('SONAR_PROJECT_KEY')}\n\n"
     
+    if has_safety_issues:
+        body += f"🔐 Safety found {len(safety_results)} vulnerable packages in requirements.txt\n"
+        body += "Please refer to the attached safety-report.json for more details.\n\n"
+
     body += "Please fix the issues and push the changes again.\n"
     return body
 
@@ -198,11 +234,12 @@ if __name__ == "__main__":
     
     # Run both scans
     bandit_success = run_bandit()
-    sonar_success, sonar_error = run_sonarcloud_scan(SCAN_DIR)
+    safety_results = run_safety(SCAN_DIR)
+    sonar_success, sonar_error = None, None
     
     # Parse results
     bandit_issues = parse_bandit_issues()
-    
+    has_safety_issues = safety_results is not None and len(safety_results) > 0
     print(f"🔍 Bandit found {len(bandit_issues)} issues.")
     print(f"🔍 SonarCloud scan {'passed' if sonar_success else 'failed'}.")
     
@@ -219,7 +256,7 @@ if __name__ == "__main__":
             issues_found.append("SonarCloud")
         
         subject = f"[Security Scan] 🚨 {' & '.join(issues_found)} Issues Found"
-        body = format_email_body(bandit_issues, has_sonar_issues, sonar_error)
+        body = format_email_body(bandit_issues, has_sonar_issues, sonar_error, has_safety_issues)
         
         # Prepare attachments
         attachments = []
@@ -232,7 +269,14 @@ if __name__ == "__main__":
                 "name": REPORT_FILE,
                 "contentBytes": encoded
             })
-        
+        if has_safety_issues and Path("safety-report.json").exists():
+            with open("safety-report.json", "rb") as f:
+                encoded = base64.b64encode(f.read()).decode("utf-8")
+            attachments.append({
+                "name": "safety-report.json",
+                "contentBytes": encoded
+            })
+
         # Send email
         communicate(
             subject=subject,

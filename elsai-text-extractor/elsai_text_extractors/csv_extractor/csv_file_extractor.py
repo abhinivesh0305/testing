@@ -7,7 +7,7 @@ class CSVFileExtractor:
 
     def load_from_csv(self):
         """
-        Load data from a CSV file using CSVLoader..
+        Load data from a CSV file using CSVLoader.
 
       
 
