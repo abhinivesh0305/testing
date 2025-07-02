@@ -32,9 +32,10 @@ load_dotenv()
 # === CONFIGURATION ===
 # Add this at the beginning of main
 if len(sys.argv) > 1:
-    SCAN_DIR = sys.argv[1]
+    SCAN_DIR = os.path.abspath(sys.argv[1])
 else:
-    SCAN_DIR = "elsai-model"  # fallback
+    SCAN_DIR = os.path.abspath(".")  # fallback to current directory
+
 REPORT_FILE = "bandit_report.json"
 SENDER_EMAIL = "abhinivesh.s@optisolbusiness.com"
 
