@@ -1,10 +1,10 @@
 #!/bin/bash
 set -e
 PEM_FILE="Elsai-Package.pem"
-FOLDER_NAME="elsai_nli"
-PACKAGE_NAME="elsai-nli"
-INDEX_NAME="elsai-nli"
-DEVPI_SIMPLE_URL="https://elsai-core-package.optisolbusiness.com/root/elsai-nli/+simple/$PACKAGE_NAME/"
+FOLDER_NAME="elsai_chat_history"
+PACKAGE_NAME="elsai-chat-history"
+INDEX_NAME="elsai-chat-history"
+DEVPI_SIMPLE_URL="https://elsai-core-package.optisolbusiness.com/root/elsai-chat-history/+simple/$PACKAGE_NAME/"
 EC2_DEST_DIR="/home/ubuntu/packages"
 
 # Set EC2 connection details
@@ -57,9 +57,6 @@ cd package
 echo "⚙️ Building Cython extensions..."
 python setup.py build_ext --inplace
 
-# Step 3: Remove implementation.py files (preserve __init__.py)
-echo "🧹 Removing source implementation.py files for obfuscation..."
-find ${FOLDER_NAME} -type f -name "implementation.py" -delete
 
 # Step 4: Package the project into sdist and wheel
 echo "📦 Creating source and wheel distributions..."

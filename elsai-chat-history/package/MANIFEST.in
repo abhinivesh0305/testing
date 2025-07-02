@@ -5,8 +5,4 @@ include LICENSE
 # Include all Python files
 recursive-include elsai_chat_history *.py
 
-# CRITICAL: Include compiled extensions
-include elsai_chat_history/**/*.so
-include elsai_chat_history/**/*.pyd
-include elsai_chat_history/**/*.dll
-recursive-include elsai_chat_history *.so *.pyd *.dll
+recursive-include elsai_chat_history *.json *.txt *.yaml

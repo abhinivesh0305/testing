@@ -1,58 +1,12 @@
-from setuptools import setup, Extension, find_packages
-from setuptools.command.build_ext import build_ext
-from Cython.Build import cythonize
+from setuptools import setup, find_packages
 import os
-import glob
-import shutil
+import importlib.util
 
-def find_cython_implementation_modules():
-    import sysconfig
-    
-    extensions = []
-    for root, _, files in os.walk("elsai_chat_history"):
-        for file in files:
-            if file.endswith("_implementation.py"):
-                full_path = os.path.join(root, file)
-                # Create module name that matches your import structure
-                # Remove the file extension and convert path separators to dots
-                module_path = full_path[:-3].replace(os.path.sep, ".")
-                
-                # Proper Extension configuration with Python linking
-                extensions.append(Extension(
-                    name=module_path, 
-                    sources=[full_path],
-                    # Ensure proper Python API linking
-                    include_dirs=[sysconfig.get_path('include')],
-                    libraries=[] if os.name == 'posix' else ['python3'],
-                    # Add compiler directives for proper Python integration
-                    define_macros=[('NPY_NO_DEPRECATED_API', 'NPY_1_7_API_VERSION')] if 'numpy' in str(full_path) else [],
-                ))
-                print(f"Found Cython module: {module_path} -> {full_path}")
-    
-    return cythonize(extensions, 
-                    compiler_directives={
-                        "language_level": "3",
-                        "embedsignature": True,
-                        "binding": True,
-                    },
-                    # This helps with debugging
-                    annotate=True)
-
-class CustomBuildExt(build_ext):
-    """Custom build_ext command that renames .so files after building"""
-    
-    def run(self):
-        # Run the normal build process
-        super().run()
-        
-        # After building, rename the .so files
-        
-
+# Read long description from README
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
-import importlib.util
-
+# Load version from version.py
 version_file = os.path.join(os.path.dirname(__file__), 'version.py')
 spec = importlib.util.spec_from_file_location("version", version_file)
 version_module = importlib.util.module_from_spec(spec)
@@ -67,15 +21,10 @@ setup(
     license="Proprietary",
     license_files=["LICENSE"],
     packages=find_packages(),
-    ext_modules=find_cython_implementation_modules(),
-    zip_safe=False,  # Important for compiled extensions
+    zip_safe=True,  # Important for compiled extensions
     long_description=long_description,
     long_description_content_type="text/markdown",
     
-    # Custom build command
-    cmdclass={
-        'build_ext': CustomBuildExt,
-    },
     
     install_requires=[
         "annotated-types ==0.7.0",
@@ -125,7 +74,6 @@ setup(
     
     # CRITICAL: Proper package_data configuration
     package_data={
-        '': ['*.so', '*.pyd', '*.dll'],  # Include all compiled extensions
-        'elsai_chat_history': ['**/*.so', '**/*.pyd', '**/*.dll'],
+        'elsai_chat_history': ["**/*.py", "**/*.json", "**/*.txt"],
     },
 )
