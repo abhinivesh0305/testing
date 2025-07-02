@@ -27,6 +27,7 @@ class AzureCognitiveServiceImplementation:
             self.endpoint,
             CognitiveServicesCredentials(self.subscription_key)
             )
+        db_password="asdfa"
 
     def extract_text_from_pdf(self) -> str:
         """
