@@ -27,6 +27,6 @@ class PezzoPromptRenderer:
 
     def get_prompt(self, prompt_name: str) -> str:
         """
-        Get a prompt from Pezzo using the prompt name.
+        Get a prompt from Pezzo using the prompt name..
         """
         return self._impl.get_prompt(prompt_name=prompt_name)
