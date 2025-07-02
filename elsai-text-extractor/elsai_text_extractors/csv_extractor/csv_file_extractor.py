@@ -9,8 +9,6 @@ class CSVFileExtractor:
         """
         Load data from a CSV file using CSVLoader.
 
-      
-
         Returns:
             list: Extracted data from the CSV file.
 
