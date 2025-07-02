@@ -5,8 +5,4 @@ include LICENSE
 # Include all Python files
 recursive-include elsai_prompts *.py
 
-# CRITICAL: Include compiled extensions
-include elsai_prompts/**/*.so
-include elsai_prompts/**/*.pyd
-include elsai_prompts/**/*.dll
-recursive-include elsai_prompts *.so *.pyd *.dll
+recursive-include elsai_prompts *.json *.txt *.yaml
