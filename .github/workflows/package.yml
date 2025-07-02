@@ -173,17 +173,6 @@ jobs:
           rm -f Elsai-Package.pem || true
           find . -name "Elsai-Package.pem" -type f -delete || true
 
-      - name: 📤 Upload build artifacts
-        uses: actions/upload-artifact@v4
-        if: success()
-        with:
-          name: build-artifacts-${{ matrix.folder }}
-          path: |
-            ${{ matrix.folder }}/dist/
-            ${{ matrix.folder }}/build/
-            ${{ matrix.folder }}/*.tar.gz
-            ${{ matrix.folder }}/*.zip
-          retention-days: 7
 
   notify-results:
     name: 📢 Notify Results

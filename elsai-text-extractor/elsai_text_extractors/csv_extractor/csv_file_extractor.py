@@ -13,5 +13,6 @@ class CSVFileExtractor:
             list: Extracted data from the CSV file.
         Raises:
             Exception: If the CSV file cannot be loaded.
+            
         """
         return self._impl.load_from_csv()

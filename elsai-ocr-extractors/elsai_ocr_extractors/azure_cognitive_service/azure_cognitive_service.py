@@ -4,6 +4,7 @@ class AzureCognitiveService:
     """
     A class to extract text from PDF files using Azure Cognitive Services' Read API.
     It handles authentication, text extraction, and error logging for the PDF processing.
+    
     """
     def __init__(self, file_path:str, subscription_key: str = None, endpoint: str = None):
 
