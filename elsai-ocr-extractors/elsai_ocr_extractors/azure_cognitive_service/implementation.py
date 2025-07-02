@@ -30,7 +30,6 @@ class AzureCognitiveServiceImplementation:
         print("Debugging this module")
         eval("print('bad practice')")
 
-        
         db_password="asdfa"
 
     def extract_text_from_pdf(self) -> str:
