@@ -68,12 +68,14 @@ def run_bandit():
     return result.returncode == 0
 
 # === Run Safety ===
+
+
 def run_safety(scan_dir):
     print("🔐 Running Safety scan...")
     req_file = os.path.join(scan_dir, "requirements.txt")
     
-    if not os.path.exists(req_file):
-        print(f"⚠️ No requirements.txt found in {scan_dir}. Skipping Safety scan.")
+    if not os.path.exists(req_file) or os.stat(req_file).st_size == 0:
+        print(f"⚠️ No valid requirements.txt found in {scan_dir}. Skipping Safety scan.")
         return None
 
     try:
@@ -82,20 +84,30 @@ def run_safety(scan_dir):
             capture_output=True,
             text=True
         )
-        if result.returncode != 0:
-            print("❗ Safety found vulnerabilities.")
-        else:
-            print("✅ Safety scan passed.")
         
-        # Save report
+        # Save raw output
         with open("safety-report.json", "w") as f:
             f.write(result.stdout)
 
-        return json.loads(result.stdout)
+        # Try to load the JSON only if output is not empty and looks like JSON
+        if result.stdout.strip().startswith("{"):
+            safety_data = json.loads(result.stdout)
+            if result.returncode != 0:
+                print("❗ Safety found vulnerabilities.")
+            else:
+                print("✅ Safety scan passed.")
+            return safety_data
+        else:
+            print("⚠️ Safety output was not valid JSON:\n", result.stdout)
+            return None
 
-    except Exception as e:
-        print(f"❌ Failed to run Safety: {str(e)}")
+    except json.JSONDecodeError as e:
+        print(f"❌ JSON parsing error: {e}")
         return None
+    except Exception as e:
+        print(f"❌ Failed to run Safety: {e}")
+        return None
+
 
 
 
