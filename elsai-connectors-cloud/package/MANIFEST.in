@@ -5,8 +5,5 @@ include LICENSE
 # Include all Python files
 recursive-include elsai_cloud *.py
 
-# CRITICAL: Include compiled extensions
-include elsai_cloud/**/*.so
-include elsai_cloud/**/*.pyd
-include elsai_cloud/**/*.dll
-recursive-include elsai_cloud *.so *.pyd *.dll
+
+recursive-include elsai_cloud *.json *.txt *.yaml
