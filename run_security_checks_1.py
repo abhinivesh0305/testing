@@ -209,14 +209,17 @@ def parse_bandit_issues():
         return []
 
 # === Format Email Body ===
-def format_email_body(bandit_issues, has_safety_issues):
+def format_email_body(bandit_issues, sonar_failed, sonar_error, has_safety_issues):
     body = "⚠️ Build failed due to security/quality issues found during scanning.\n\n"
     
     if bandit_issues:
         body += f"🚨 Bandit found {len(bandit_issues)} security issues:\n"
         body += "Please refer to the attached Bandit report (`bandit_report.json`) for details.\n\n"
     
-
+    if sonar_failed:
+        body += "🔍 SonarCloud Quality Gate failed:\n"
+        body += f"{sonar_error}\n\n"
+        body += f"View detailed results at: https://sonarcloud.io/project/overview?id={os.getenv('SONAR_PROJECT_KEY')}\n\n"
     
     if has_safety_issues:
         body += f"🔐 Safety found {len(safety_results)} vulnerable packages in requirements.txt\n"
@@ -232,27 +235,28 @@ if __name__ == "__main__":
     # Run both scans
     bandit_success = run_bandit()
     safety_results = run_safety(SCAN_DIR)
-
+    sonar_success, sonar_error = None, None
     
     # Parse results
     bandit_issues = parse_bandit_issues()
     has_safety_issues = safety_results is not None and len(safety_results) > 0
     print(f"🔍 Bandit found {len(bandit_issues)} issues.")
-
+    print(f"🔍 SonarCloud scan {'passed' if sonar_success else 'failed'}.")
     
     # Determine if we need to send an email
     has_bandit_issues = len(bandit_issues) > 0
-
+    has_sonar_issues = not sonar_success
     
-    if has_bandit_issues:
+    if has_bandit_issues or has_sonar_issues:
         # Prepare email details
         issues_found = []
         if has_bandit_issues:
             issues_found.append("Bandit")
-
+        if has_sonar_issues:
+            issues_found.append("SonarCloud")
         
         subject = f"[Security Scan] 🚨 {' & '.join(issues_found)} Issues Found"
-        body = format_email_body(bandit_issues, has_safety_issues)
+        body = format_email_body(bandit_issues, has_sonar_issues, sonar_error, has_safety_issues)
         
         # Prepare attachments
         attachments = []
