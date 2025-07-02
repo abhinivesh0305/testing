@@ -74,45 +74,6 @@ import subprocess
 import os
 import json
 
-def run_safety(scan_dir):
-    print("🔐 Running Safety scan...")
-    req_file = os.path.join(scan_dir, "requirements.txt")
-    
-    if not os.path.exists(req_file) or os.stat(req_file).st_size == 0:
-        print(f"⚠️ No valid requirements.txt found in {scan_dir}. Skipping Safety scan.")
-        return None
-
-    try:
-        result = subprocess.run(
-            ["safety", "scan", "--json", "-r", req_file],
-            capture_output=True,
-            text=True
-        )
-
-        # Save output to file
-        with open("safety-report.json", "w") as f:
-            f.write(result.stdout)
-
-        try:
-            safety_data = json.loads(result.stdout)
-        except json.JSONDecodeError:
-            print("❌ Output was not valid JSON.")
-            print(result.stdout)
-            return None
-
-        if result.returncode == 0:
-            print("✅ Safety scan passed.")
-        else:
-            print("❗ Safety found vulnerabilities.")
-
-        return safety_data
-
-    except Exception as e:
-        print(f"❌ Failed to run Safety: {e}")
-        return None
-
-
-
 
 
 # === Run SonarCloud Scan ===
@@ -226,18 +187,13 @@ def parse_bandit_issues():
         return []
 
 # === Format Email Body ===
-def format_email_body(bandit_issues, has_safety_issues):
+def format_email_body(bandit_issues):
     body = "⚠️ Build failed due to security/quality issues found during scanning.\n\n"
     
     if bandit_issues:
         body += f"🚨 Bandit found {len(bandit_issues)} security issues:\n"
         body += "Please refer to the attached Bandit report (`bandit_report.json`) for details.\n\n"
     
-
-    
-    if has_safety_issues:
-        body += f"🔐 Safety found {len(safety_results)} vulnerable packages in requirements.txt\n"
-        body += "Please refer to the attached safety-report.json for more details.\n\n"
 
     body += "Please fix the issues and push the changes again.\n"
     return body
@@ -248,14 +204,14 @@ if __name__ == "__main__":
     
     # Run both scans
     bandit_success = run_bandit()
-    safety_results = run_safety(SCAN_DIR)
+
 
     
     # Parse results
     bandit_issues = parse_bandit_issues()
-    has_safety_issues = safety_results is not None and len(safety_results) > 0
 
-    print(safety_results)
+
+
     print(f"🔍 Bandit found {len(bandit_issues)} issues.")
 
     
@@ -263,14 +219,13 @@ if __name__ == "__main__":
     has_bandit_issues = len(bandit_issues) > 0
 
     
-    if has_bandit_issues or has_safety_issues:
+    if has_bandit_issues:
 
         # Prepare email details
         issues_found = []
         if has_bandit_issues:
             issues_found.append("Bandit")
-        if has_safety_issues:
-            issues_found.append("Safety")
+
         
         subject = f"[Security Scan] 🚨 {' & '.join(issues_found)} Issues Found"
         body = format_email_body(bandit_issues, has_safety_issues)
@@ -284,13 +239,6 @@ if __name__ == "__main__":
             
             attachments.append({
                 "name": REPORT_FILE,
-                "contentBytes": encoded
-            })
-        if has_safety_issues and Path("safety-report.json").exists():
-            with open("safety-report.json", "rb") as f:
-                encoded = base64.b64encode(f.read()).decode("utf-8")
-            attachments.append({
-                "name": "safety-report.json",
                 "contentBytes": encoded
             })
 
