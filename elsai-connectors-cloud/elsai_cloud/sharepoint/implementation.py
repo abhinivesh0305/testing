@@ -13,7 +13,7 @@ class SharePointServiceImplementation:
     A service class to interact with SharePoint for file retrieval and download.
     """
 
-    GETTING_ACCESS_TOKEN_MSG = "Getting access token..."
+    GETTING_ACCESS_TOKEN_MSG = "Getting access token..." # nosec B105
     HTTP_ERROR_MSG = "HTTP error occurred: %s"
     UNEXPECTED_ERROR_MSG = "Unexpected error: %s"
 
