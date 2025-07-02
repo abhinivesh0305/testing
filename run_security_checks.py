@@ -245,12 +245,14 @@ if __name__ == "__main__":
     has_bandit_issues = len(bandit_issues) > 0
 
     
-    if has_bandit_issues:
+    if has_bandit_issues or has_safety_issues:
+
         # Prepare email details
         issues_found = []
         if has_bandit_issues:
             issues_found.append("Bandit")
-
+        if has_safety_issues:
+            issues_found.append("Safety")
         
         subject = f"[Security Scan] 🚨 {' & '.join(issues_found)} Issues Found"
         body = format_email_body(bandit_issues, has_safety_issues)
