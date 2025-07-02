@@ -3,6 +3,7 @@ import logging
 def setup_logger():
     """
     Sets up a logger with console output at INFO level.
+    
     Returns:
         logger (logging.Logger): Configured logger.
     """
