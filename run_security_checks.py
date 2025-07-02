@@ -82,13 +82,13 @@ def run_sonarcloud_scan(scan_dir="elsai_model"):
 
     sonar_token = os.getenv("SONAR_TOKEN")
     sonar_project_key = os.getenv("SONAR_PROJECT_KEY")
-    sonar_org = os.getenv("SONAR_ORG")
+
 
     # Check for missing variables
     missing = []
     if not sonar_token: missing.append("SONAR_TOKEN")
     if not sonar_project_key: missing.append("SONAR_PROJECT_KEY")
-    if not sonar_org: missing.append("SONAR_ORG")
+
 
     if missing:
         print(f"❌ Missing environment variables: {', '.join(missing)}")
@@ -101,7 +101,6 @@ def run_sonarcloud_scan(scan_dir="elsai_model"):
             "pysonar",
             "--token", sonar_token,
             "--sonar-project-key", sonar_project_key,
-            "--sonar-organization", sonar_org,
             "--sonar-sources", scan_dir,
             "--sonar-host-url", "https://sonarcloud.io"
         ], capture_output=True, text=True)
@@ -206,7 +205,7 @@ if __name__ == "__main__":
     bandit_success = run_bandit()
 
 
-    
+    run_sonarcloud_scan(SCAN_DIR)
     # Parse results
     bandit_issues = parse_bandit_issues()
 
