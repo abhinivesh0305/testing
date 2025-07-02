@@ -3,7 +3,7 @@ import os
 
 class MySQLSQLConnector:
     """
-    A connector class for MySQL databases.
+    A connector class for MySQL databases..
     """
     def __init__(
             self, 
