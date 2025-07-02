@@ -228,7 +228,7 @@ if __name__ == "__main__":
 
         
         subject = f"[Security Scan] 🚨 {' & '.join(issues_found)} Issues Found"
-        body = format_email_body(bandit_issues, has_safety_issues)
+        body = format_email_body(bandit_issues)
         
         # Prepare attachments
         attachments = []
